@@ -1,0 +1,16 @@
+{
+  "name": "lfa",
+  "version": "1.0.0",
+  "description": "Este projeto consiste em um simulador de Autômatos Finitos Determinísticos (AFD) desenvolvido em TypeScript.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node --no-warnings ./index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+  }
+}
