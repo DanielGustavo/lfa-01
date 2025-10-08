@@ -1,131 +1,72 @@
-# Simulador de Autômatos Finitos Determinísticos (AFD)
+# Manual de Uso e Documentação – Simulador de Autômatos Finitos Determinísticos
 
-Este projeto consiste em um simulador de Autômatos Finitos Determinísticos (AFD) desenvolvido em TypeScript.
+- **Nota**: Para exemplos práticos e detalhados de como modelar e testar diferentes autômatos, acesse os [Exemplos de Uso](./exemplos.md).
 
-O programa é uma aplicação de console interativa que permite ao usuário:
-1.  Definir um AFD: `A = (Q, Σ, δ, q0, F)`.
-2.  Validar se a definição do autômato é consistente.
-3.  Testar múltiplas cadeias de caracteres para verificar se são aceitas ou rejeitadas pelo AFD definido.
+## 1. Objetivo do Projeto
+Este documento detalha a implementação de um Simulador de Autômatos Finitos Determinísticos (AFD).
 
-## 1. Requisitos
+O objetivo principal é fornecer uma ferramenta de console interativa que permita a um usuário carregar a definição de qualquer AFD a partir de um arquivo externo e testar o reconhecimento de múltiplas cadeias de caracteres, validando se elas pertencem ou não à linguagem regular definida pelo autômato.
 
-Para executar o simulador, você precisa ter o seguinte software instalado:
+## 2. Visão Geral da Solução
+O simulador foi desenvolvido em TypeScript, uma linguagem que adiciona tipagem estática ao JavaScript. A aplicação é executada no ambiente Node.js, permitindo que seja utilizada diretamente no terminal (console) de qualquer sistema operacional (Windows, macOS ou Linux).
 
--   **Node.js**: Ambiente de execução para JavaScript/TypeScript.
--   **TypeScript**: Compilador do TypeScript.
--   **ts-node**: Biblioteca que permite executar arquivos TypeScript diretamente sem compilação manual.
+A definição dos autômatos é lida de um arquivo de configuração chamado ```afds.json```.
 
-## 2. Instalação
+## 3. Tecnologias Utilizadas
+- **Node.js**: Ambiente de execução que permite rodar o código TypeScript/JavaScript fora de um navegador.
+- **TypeScript**: Linguagem de programação principal, escolhida pela segurança de tipos e organização do código.
+- **Chalk**: Biblioteca utilizada para adicionar cores e formatação ao texto no terminal
 
-Abra um terminal ou prompt de comando e instale o `ts-node` globalmente com o seguinte comando:
+## 4. Guia de Instalação do Ambiente (Passo a Passo)
+Para executar o simulador, é necessário ter o **Node.js** instalado no computador.
 
-```bash
-npm install -g ts-node
-````
+### Passo 1: Instalar o Node.js
+- Acesse o site oficial do Node.js: https://nodejs.org/
+- Baixe a versão LTS (Long Term Support), que é a mais estável e recomendada para a maioria dos usuários.
+- Execute o arquivo baixado e siga as instruções do instalador.
 
-## 3\. Como Executar
-
-```bash
-npm run start
-```
-
-## 4\. Guia de Uso
-
-Ao iniciar o programa, você será guiado por um processo de 5 passos para definir seu autômato.
-
-### Passo 1: Definir os Estados (Q)
-
-Você deve fornecer todos os estados do autômato, separados por vírgula.
-`Exemplo: q0,q1,q2`
-
-### Passo 2: Definir o Alfabeto (Σ)
-
-Forneça os símbolos que compõem o alfabeto, também separados por vírgula.
-`Exemplo: 0,1`
-
-### Passo 3: Definir o Estado Inicial (q0)
-
-Informe qual dos estados previamente definidos será o estado inicial. O programa irá validar se o estado informado realmente existe.
-`Exemplo: q0`
-
-### Passo 4: Definir os Estados Finais (F)
-
-Informe o conjunto de estados de aceitação, separados por vírgula.
-`Exemplo: q2`
-
-### Passo 5: Definir a Função de Transição (δ)
-
-O programa irá pedir, uma por uma, a transição para cada par `(estado, símbolo)`. Você deve informar o estado de destino para cada transição.
-`Exemplo:`
-`δ(q0, 0) -> q1`
-`δ(q0, 1) -> q0`
-`... e assim por diante.`
-
-### Testando Cadeias
-
-Após a definição do autômato, o programa entrará no modo de teste.
-
-  - Digite qualquer cadeia de caracteres e pressione `Enter`.
-  - O simulador exibirá o caminho percorrido e o resultado (`ACEITA` ou `REJEITA`).
-  - Para encerrar o programa, digite `:sair` ou `:quit` e pressione `Enter`.
-
-## 5\. Exemplo de Uso Completo
-
-Vamos definir um AFD que aceita cadeias binárias terminadas em `0`.
-
-  - **Estados (Q)**: `{q0, q1}`
-  - **Alfabeto (Σ)**: `{0, 1}`
-  - **Estado Inicial (q0)**: `q0`
-  - **Estados Finais (F)**: `{q1}`
-  - **Transições (δ)**:
-      - δ(q0, 0) = q1
-      - δ(q0, 1) = q0
-      - δ(q1, 0) = q1
-      - δ(q1, 1) = q0
-
-**Interação com o programa:**
+### Passo 2: Verificar a Instalação
+1. Abra um terminal no seu computador.
+2. Digite os dois comandos abaixo (um de cada vez) e pressione Enter. Eles devem retornar as versões instaladas, confirmando que a instalação foi bem-sucedida.
 
 ```
---- Simulador de Autômato Finito Determinístico ---
-Por favor, defina os componentes do seu AFD.
-1. Estados (separados por vírgula. Ex: q0,q1,q2): q0, q1
-2. Alfabeto (símbolos separados por vírgula. Ex: 0,1): 0, 1
-3. Estado Inicial (deve ser um dos estados definidos. Ex: q0): q0
-4. Estados Finais/Aceitação (separados por vírgula. Ex: q2): q1
-5. Funções de Transição (δ):
-   δ(q0, 0) -> q1
-   δ(q0, 1) -> q0
-   δ(q1, 0) -> q1
-   δ(q1, 1) -> q0
-
-✅ Autômato definido e validado com sucesso!
-
---- Iniciar Testes ---
-Digite uma cadeia para testar ou ':sair' para encerrar.
-> 110
-   Caminho: q0 --(1)-> q0 --(1)-> q0 --(0)-> q1
-   Resultado: ✅ ACEITA (Estado final "q1" é um estado de aceitação).
-
-Digite uma cadeia para testar ou ':sair' para encerrar.
-> 101
-   Caminho: q0 --(1)-> q0 --(0)-> q1 --(1)-> q0
-   Resultado: ❌ REJEITA (Estado final "q0" não é um estado de aceitação).
-
-Digite uma cadeia para testar ou ':sair' para encerrar.
-> 0
-   Caminho: q0 --(0)-> q1
-   Resultado: ✅ ACEITA (Estado final "q1" é um estado de aceitação).
-
-Digite uma cadeia para testar ou ':sair' para encerrar.
-> 11
-   Caminho: q0 --(1)-> q0 --(1)-> q0
-   Resultado: ❌ REJEITA (Estado final "q0" não é um estado de aceitação).
-
-Digite uma cadeia para testar ou ':sair' para encerrar.
-> 101a
-   -> ❗️ Erro: Símbolo "a" na posição 3 não pertence ao alfabeto.
-
-Digite uma cadeia para testar ou ':sair' para encerrar.
-> :sair
- encerrando...
+node -v
+npm -v
 ```
+
+### Passo 3: Instalar as Dependências do Projeto
+
+1. Abra o terminal no diretório do projeto
+2. Agora, execute o seguinte comando. Ele irá ler o arquivo package.json e baixar automaticamente as bibliotecas necessárias.
+   
+```
+npm install
+```
+
+## 5. Executando o Simulador
+Com o ambiente pronto, no terminal dentro da pasta do projeto, execute o comando:
+
+```
+npm start
+```
+
+O programa será iniciado, e você poderá começar a usar o simulador.
+
+## 6. Estrutura dos Arquivos do Projeto
+- ```index.ts```: Contém todo o código-fonte do simulador em TypeScript.
+- ```afds.json```: Arquivo de configuração onde os autômatos são definidos no formato JSON.
+- ```package.json```: Arquivo que gerencia as dependências do projeto e define scripts úteis, como o npm start.
+
+## 7. Formato do Arquivo de Definição (afds.json)
+Para adicionar ou editar um autômato, você deve modificar o arquivo afds.json. Ele é um array de objetos, onde cada objeto representa um AFD e deve seguir a estrutura abaixo:
+
+| Chave         | Tipo                                  | Descrição                                                                                                                           |
+|---------------|---------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| ```descricao```     | ```string```                                | Um texto breve que descreve o que o autômato faz. Será exibido no menu de seleção.                                                  |
+| ```estados```       | ```array de strings```                      | Uma lista com o nome de todos os estados do autômato (ex: ```["q0", "q1", "q_erro"]```).                                                  |
+| ```alfabeto```      | ```objeto```                                | Define os símbolos da linguagem. Contém duas chaves opcionais: ```grupos``` e ```isolados```.                                                   |
+| ```  ↳ grupos```      | ```objeto (chave: string, valor: string)``` | Permite agrupar símbolos sob um nome. Ex: ```"digito": "0,1,2,3,4,5,6,7,8,9"```. Os símbolos devem ser separados por vírgula.             |
+| ```  ↳ isolados```     | ```array de strings```                      | Define símbolos individuais do alfabeto (ex: ```["+", "-", "."]```).                                                                      |
+| ```estadoInicial``` | ```string```                                | O nome do estado inicial. Deve ser um dos estados listados em ```estados```.                                                              |
+| ```estadosFinais``` | ```array de strings```                      | Uma lista com os nomes de todos os estados de aceitação.                                                                            |
+| ```transicoes```    | ```objeto```                                | Define a função de transição δ. Cada chave é um estado de origem, e seu valor é um objeto com as transições (```"símbolo": "destino"```). |
