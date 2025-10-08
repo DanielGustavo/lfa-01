@@ -1,5 +1,6 @@
 import * as readline from 'readline';
 import * as fs from 'fs';
+import chalk from 'chalk';
 
 type Estado = string;
 type Simbolo = string;
@@ -41,12 +42,12 @@ class SimuladorAFD {
 
   private perguntar(pergunta: string): Promise<string> {
     return new Promise((resolve) => {
-      this.leitor.question(pergunta, resolve);
+      this.leitor.question(chalk.yellow(pergunta), resolve);
     });
   }
 
   public async iniciar(): Promise<void> {
-    console.log('--- Simulador de Autômato Finito Determinístico ---');
+    console.log(chalk.bold.cyan('--- Simulador de Autômato Finito Determinístico ---'));
 
     try {
       const definicoes = this.carregarAFDsDeArquivo('afds.json');
@@ -58,7 +59,7 @@ class SimuladorAFD {
       
       if (definicaoEscolhida) {
         this.afd = this.construirAFD(definicaoEscolhida);
-        console.log(`\n✅ AFD "${definicaoEscolhida.descricao}" carregado com sucesso!`);
+        console.log(chalk.green(`\n✅ AFD "${chalk.bold(definicaoEscolhida.descricao)}" carregado com sucesso!`));
         this.iniciarLoopDeTeste();
       } else {
         console.log("Nenhum AFD selecionado. Encerrando.");
@@ -66,9 +67,9 @@ class SimuladorAFD {
       }
     } catch (erro) {
       if (erro instanceof Error) {
-        console.error(`\n❌ Erro: ${erro.message}`);
+        console.error(chalk.red.bold(`\n❌ Erro: ${erro.message}`));
       } else {
-        console.error('\n❌ Ocorreu um erro inesperado.');
+        console.error(chalk.red.bold('\n❌ Ocorreu um erro inesperado.'));
       }
       this.leitor.close();
     }
@@ -94,10 +95,10 @@ class SimuladorAFD {
   }
 
   private async selecionarAFD(definicoes: DefinicaoAFDJson[]): Promise<DefinicaoAFDJson | null> {
-    console.log("\nPor favor, escolha um AFD para simular:");
+    console.log(chalk.bold("\nPor favor, escolha um AFD para simular:"));
      
     definicoes.forEach((def, index) => {
-      console.log(`  ${index + 1}. ${def.descricao}`);
+      console.log(`  ${chalk.bold(index + 1)}. ${def.descricao}`);
     });
 
     while (true) {
@@ -108,7 +109,7 @@ class SimuladorAFD {
       if (!isNaN(num) && num > 0 && num <= definicoes.length) {
         return definicoes[num - 1];
       } else {
-        console.log("   [Aviso] Escolha inválida. Por favor, digite um número da lista.");
+        console.log(chalk.yellow("   [Aviso] Escolha inválida. Por favor, digite um número da lista."));
       }
     }
   }
@@ -210,11 +211,16 @@ class SimuladorAFD {
   }
 
   private iniciarLoopDeTeste(): void {
+    const prompt = () => {
+      console.log(chalk.bold("\nDigite uma cadeia para testar ou ':sair' para encerrar."));
+      this.leitor.prompt();
+    };
+
     this.leitor.on('line', (linha) => {
       const cadeia = linha.trim();
        
       if (cadeia.toLowerCase() === ':sair' || cadeia.toLowerCase() === ':quit') {
-        console.log(' encerrando...');
+        console.log(chalk.italic(' encerrando...'));
         this.leitor.close();
         return;
       }
@@ -224,23 +230,22 @@ class SimuladorAFD {
       try {
         this.testarCadeia(cadeia);
       } catch(erro) {
-        if (erro instanceof Error) console.log(`   -> ❗️ Erro: ${erro.message}`);
+        if (erro instanceof Error) console.log(chalk.red(`   -> ❗️ Erro: ${erro.message}`));
       }
        
-      console.log("\nDigite uma cadeia para testar ou ':sair' para encerrar.");
-      process.stdout.write('> ');
+      prompt();
     });
 
-    console.log("\n--- Iniciar Testes ---");
-    console.log("Digite uma cadeia para testar ou ':sair' para encerrar.");
-    process.stdout.write('> ');
+    console.log(chalk.bold.inverse("\n--- Iniciar Testes ---"));
+    this.leitor.setPrompt(chalk.yellow('> '));
+    prompt();
   }
    
   private testarCadeia(cadeia: string): void {
     if (!this.afd) throw new Error("AFD não foi inicializado.");
      
     let estadoAtual = this.afd.estadoInicial;
-    let caminho = estadoAtual;
+    let caminhoFormatado = chalk.bold(estadoAtual);
 
     const encontrarGrupoParaSimbolo = (simbolo: Simbolo): Grupo | undefined => {
       for (const [grupo, simbolosDoGrupo] of this.afd!.gruposDoAlfabeto.entries()) {
@@ -254,7 +259,7 @@ class SimuladorAFD {
       const simbolo = cadeia[i];
        
       if (!this.afd.alfabetoCompleto.has(simbolo)) {
-        throw new Error(`Símbolo "${simbolo}" na posição ${i} não pertence ao alfabeto.`);
+        throw new Error(`Símbolo "${chalk.bold(simbolo)}" na posição ${i} não pertence ao alfabeto.`);
       }
        
       const grupoDoSimbolo = encontrarGrupoParaSimbolo(simbolo);
@@ -266,20 +271,20 @@ class SimuladorAFD {
       const proximoEstado = this.afd.transicoes[estadoAtual]?.[grupoDoSimbolo];
        
       if (proximoEstado === undefined) {
-        throw new Error(`Transição não definida para o estado "${estadoAtual}" com o grupo de símbolos "${grupoDoSimbolo}".`);
+        throw new Error(`Transição não definida para o estado "${chalk.bold(estadoAtual)}" com o grupo de símbolos "${chalk.bold(grupoDoSimbolo)}".`);
       }
        
       estadoAtual = proximoEstado;
-      caminho += ` --(${simbolo})-> ${estadoAtual}`;
+      caminhoFormatado += `${chalk.dim(` --(${simbolo})-> `)}${chalk.bold(estadoAtual)}`;
     }
 
     const aceita = this.afd.estadosFinais.has(estadoAtual);
-    console.log(`   Caminho: ${caminho}`);
+    console.log(`   ${chalk.italic('Caminho:')} ${caminhoFormatado}`);
      
     if (aceita) {
-      console.log(`   Resultado: ✅ ACEITA (Estado final "${estadoAtual}" é um estado de aceitação).`);
+      console.log(chalk.green.bold(`   Resultado: ✅ ACEITA (Estado final "${estadoAtual}" é um estado de aceitação).`));
     } else {
-      console.log(`   Resultado: ❌ REJEITA (Estado final "${estadoAtual}" não é um estado de aceitação).`);
+      console.log(chalk.red.bold(`   Resultado: ❌ REJEITA (Estado final "${estadoAtual}" não é um estado de aceitação).`));
     }
   }
 }
