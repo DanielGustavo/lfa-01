@@ -1,22 +1,31 @@
 import * as readline from 'readline';
+import * as fs from 'fs';
 
 type Estado = string;
 type Simbolo = string;
+type Grupo = string;
 
-/*
-  Exemplo: {
-    "q0": { 0: "q1", 1: "q0" },
-    "q1": { 0: "q1": 1: "q0" }
-  }
-*/
-type FuncaoTransicao = Record<Estado, Record<Simbolo, Estado>>;
+type FuncaoTransicao = Record<Estado, Record<Grupo, Estado>>;
 
 interface AFD {
   estados: Set<Estado>;
-  alfabeto: Set<Simbolo>;
+  alfabetoCompleto: Set<Simbolo>;
+  gruposDoAlfabeto: Map<Grupo, Set<Simbolo>>;
   transicoes: FuncaoTransicao;
   estadoInicial: Estado;
   estadosFinais: Set<Estado>;
+}
+
+interface DefinicaoAFDJson {
+  descricao: string;
+  estados: string[];
+  alfabeto: {
+    grupos?: Record<string, string>;
+    isolados?: string[];
+  };
+  estadoInicial: string;
+  estadosFinais: string[];
+  transicoes: Record<string, Record<string, string>>;
 }
 
 class SimuladorAFD {
@@ -38,103 +47,186 @@ class SimuladorAFD {
 
   public async iniciar(): Promise<void> {
     console.log('--- Simulador de Autômato Finito Determinístico ---');
-    console.log('Por favor, defina os componentes do seu AFD.');
 
     try {
-      await this.definirAFD();
-       
-      if (this.afd) {
-        console.log('\n✅ Autômato definido e validado com sucesso!');
+      const definicoes = this.carregarAFDsDeArquivo('afds.json');
+      if (definicoes.length === 0) {
+        throw new Error("Nenhum AFD encontrado em 'afds.json'. O arquivo está vazio ou não existe.");
+      }
+      
+      const definicaoEscolhida = await this.selecionarAFD(definicoes);
+      
+      if (definicaoEscolhida) {
+        this.afd = this.construirAFD(definicaoEscolhida);
+        console.log(`\n✅ AFD "${definicaoEscolhida.descricao}" carregado com sucesso!`);
         this.iniciarLoopDeTeste();
+      } else {
+        console.log("Nenhum AFD selecionado. Encerrando.");
+        this.leitor.close();
       }
     } catch (erro) {
       if (erro instanceof Error) {
-        console.error(`\n❌ Erro na definição do autômato: ${erro.message}`);
+        console.error(`\n❌ Erro: ${erro.message}`);
       } else {
         console.error('\n❌ Ocorreu um erro inesperado.');
       }
-       
       this.leitor.close();
     }
   }
 
-  private async definirAFD(): Promise<void> {
-    const estadosStr = await this.perguntar('1. Estados (separados por vírgula. Ex: q0,q1,q2): ');
-    const estados = new Set(estadosStr.split(',').map(s => s.trim()));
-    if (estados.size === 0) throw new Error("O conjunto de estados não pode ser vazio.");
-
-    const alfabetoStr = await this.perguntar('2. Alfabeto (símbolos separados por vírgula. Ex: 0,1): ');
-    const alfabeto = new Set(alfabetoStr.split(',').map(s => s.trim()));
-    if (alfabeto.size === 0) throw new Error("O alfabeto não pode ser vazio.");
-
-    const estadoInicial = await this.perguntar('3. Estado Inicial (deve ser um dos estados definidos. Ex: q0): ');
-    if (!estados.has(estadoInicial)) {
-      throw new Error(`O estado inicial "${estadoInicial}" não pertence ao conjunto de estados.`);
-    }
-
-    const estadosFinaisStr = await this.perguntar('4. Estados Finais/Aceitação (separados por vírgula. Ex: q2): ');
-    const estadosFinais = new Set(estadosFinaisStr.split(',').map(s => s.trim()));
-     
-    for (const ef of estadosFinais) {
-      if (!estados.has(ef)) {
-        throw new Error(`O estado final "${ef}" não pertence ao conjunto de estados.`);
+  private carregarAFDsDeArquivo(caminho: string): DefinicaoAFDJson[] {
+    try {
+      const dados = fs.readFileSync(caminho, 'utf-8');
+      const definicoes = JSON.parse(dados);
+       
+      if (!Array.isArray(definicoes)) {
+        throw new Error("O JSON deve ser um array de definições de AFD.");
       }
+       
+      return definicoes as DefinicaoAFDJson[];
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new Error(`Arquivo de definição '${caminho}' não encontrado.`);
+      }
+       
+      throw new Error(`Erro ao ler ou parsear o arquivo '${caminho}': ${(error as Error).message}`);
     }
-    
-    console.log('5. Funções de Transição (δ):');
-    const transicoes = await this.definirTransicoes(estados, alfabeto);
-
-    this.afd = { estados, alfabeto, transicoes, estadoInicial, estadosFinais };
   }
 
-  private async definirTransicoes(estados: Set<Estado>, alfabeto: Set<Simbolo>): Promise<FuncaoTransicao> {
-    const transicoes: FuncaoTransicao = {};
+  private async selecionarAFD(definicoes: DefinicaoAFDJson[]): Promise<DefinicaoAFDJson | null> {
+    console.log("\nPor favor, escolha um AFD para simular:");
      
-    for (const estado of estados) {
-      transicoes[estado] = {};
-       
-      for (const simbolo of alfabeto) {
-        let proximoEstado = '';
-        let estadoValido = false;
-        
-        // Loop até que um estado de destino válido seja fornecido
-        while(!estadoValido) {
-          proximoEstado = await this.perguntar(`   δ(${estado}, ${simbolo}) -> `);
-          if (estados.has(proximoEstado.trim())) {
-            estadoValido = true;
-          } else {
-            console.log(`   [Aviso] Estado "${proximoEstado}" não é válido. Por favor, insira um estado existente.`);
-          }
-        }
-         
-        transicoes[estado][simbolo] = proximoEstado.trim();
+    definicoes.forEach((def, index) => {
+      console.log(`  ${index + 1}. ${def.descricao}`);
+    });
+
+    while (true) {
+      const resposta = await this.perguntar("Digite o número do AFD desejado (ou 'sair'): ");
+      if (resposta.trim().toLowerCase() === 'sair') return null;
+
+      const num = parseInt(resposta, 10);
+      if (!isNaN(num) && num > 0 && num <= definicoes.length) {
+        return definicoes[num - 1];
+      } else {
+        console.log("   [Aviso] Escolha inválida. Por favor, digite um número da lista.");
       }
     }
+  }
+
+  private construirAFD(def: DefinicaoAFDJson): AFD {
+    const estados = new Set(def.estados);
      
-    return transicoes;
+    if (!estados.has(def.estadoInicial)) {
+      throw new Error(`Estado inicial "${def.estadoInicial}" não está no conjunto de estados.`);
+    }
+     
+    def.estadosFinais.forEach((ef) => {
+      if (!estados.has(ef)) {
+        throw new Error(`Estado final "${ef}" não está no conjunto de estados.`);
+      }
+    });
+
+    const { gruposDoAlfabeto, alfabetoCompleto } = this.processarAlfabeto(def.alfabeto);
+
+    for (const estadoOrigem in def.transicoes) {
+      if (!estados.has(estadoOrigem)) {
+        throw new Error(`Estado de origem "${estadoOrigem}" nas transições não é válido.`);
+      }
+       
+      for (const simboloGrupo in def.transicoes[estadoOrigem]) {
+        if (!gruposDoAlfabeto.has(simboloGrupo)) {
+          throw new Error(`Símbolo/grupo "${simboloGrupo}" na transição de "${estadoOrigem}" não foi definido no alfabeto.`);
+        }
+         
+        const estadoDestino = def.transicoes[estadoOrigem][simboloGrupo];
+         
+        if (!estados.has(estadoDestino)) {
+          throw new Error(`Estado de destino "${estadoDestino}" na transição de "${estadoOrigem}" com "${simboloGrupo}" não é válido.`);
+        }
+      }
+    }
+
+    return {
+      estados: new Set(def.estados),
+      alfabetoCompleto,
+      gruposDoAlfabeto,
+      transicoes: def.transicoes,
+      estadoInicial: def.estadoInicial,
+      estadosFinais: new Set(def.estadosFinais)
+    };
+  }
+  
+  private processarAlfabeto(
+    alfabetoDef: DefinicaoAFDJson['alfabeto']
+  ): {
+    gruposDoAlfabeto: Map<Grupo, Set<Simbolo>>,
+    alfabetoCompleto: Set<Simbolo>
+  } {
+      const gruposDoAlfabeto = new Map<Grupo, Set<Simbolo>>();
+      const alfabetoCompleto = new Set<Simbolo>();
+
+      if (alfabetoDef.grupos) {
+        for (const nomeGrupo in alfabetoDef.grupos) {
+          const simbolosStr = alfabetoDef.grupos[nomeGrupo];
+          const simbolos = this.parseSimbolos(simbolosStr);
+           
+          simbolos.forEach((s) => {
+            if (alfabetoCompleto.has(s)) {
+              throw new Error(`Símbolo "${s}" definido em múltiplos locais.`);
+            }
+             
+            alfabetoCompleto.add(s);
+          });
+           
+          gruposDoAlfabeto.set(nomeGrupo, simbolos);
+        }
+      }
+
+      if (alfabetoDef.isolados) {
+        const simbolos = this.parseSimbolos(alfabetoDef.isolados.join(','));
+         
+        simbolos.forEach((s) => {
+          if (alfabetoCompleto.has(s)) {
+            throw new Error(`Símbolo "${s}" definido em múltiplos locais.`);
+          }
+           
+          alfabetoCompleto.add(s);
+          gruposDoAlfabeto.set(s, new Set([s]));
+        });
+      }
+       
+      return { gruposDoAlfabeto, alfabetoCompleto };
+  }
+
+  private parseSimbolos(input: string): Set<Simbolo> {
+    const simbolos = new Set<Simbolo>();
+    const parts = input.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    
+    for (const part of parts) {
+      simbolos.add(part);
+    }
+     
+    return simbolos;
   }
 
   private iniciarLoopDeTeste(): void {
     this.leitor.on('line', (linha) => {
       const cadeia = linha.trim();
+       
       if (cadeia.toLowerCase() === ':sair' || cadeia.toLowerCase() === ':quit') {
         console.log(' encerrando...');
         this.leitor.close();
         return;
       }
-
-      if (!this.afd) {
-        console.error('Autômato não definido.');
-        return;
-      }
-
+       
+      if (!this.afd) return;
+       
       try {
         this.testarCadeia(cadeia);
       } catch(erro) {
-        if (erro instanceof Error) {
-           console.log(`   -> ❗️ Erro: ${erro.message}`);
-        }
+        if (erro instanceof Error) console.log(`   -> ❗️ Erro: ${erro.message}`);
       }
+       
       console.log("\nDigite uma cadeia para testar ou ':sair' para encerrar.");
       process.stdout.write('> ');
     });
@@ -146,29 +238,44 @@ class SimuladorAFD {
    
   private testarCadeia(cadeia: string): void {
     if (!this.afd) throw new Error("AFD não foi inicializado.");
-
+     
     let estadoAtual = this.afd.estadoInicial;
     let caminho = estadoAtual;
 
+    const encontrarGrupoParaSimbolo = (simbolo: Simbolo): Grupo | undefined => {
+      for (const [grupo, simbolosDoGrupo] of this.afd!.gruposDoAlfabeto.entries()) {
+        if (simbolosDoGrupo.has(simbolo)) return grupo;
+      }
+       
+      return undefined;
+    };
+
     for (let i = 0; i < cadeia.length; i++) {
       const simbolo = cadeia[i];
-
-      if (!this.afd.alfabeto.has(simbolo)) {
+       
+      if (!this.afd.alfabetoCompleto.has(simbolo)) {
         throw new Error(`Símbolo "${simbolo}" na posição ${i} não pertence ao alfabeto.`);
       }
-
-      const proximoEstado = this.afd.transicoes[estadoAtual]?.[simbolo];
-      if (proximoEstado === undefined) {
-        throw new Error(`Transição não definida para o estado "${estadoAtual}" com o símbolo "${simbolo}".`);
+       
+      const grupoDoSimbolo = encontrarGrupoParaSimbolo(simbolo);
+       
+      if (!grupoDoSimbolo) {
+        throw new Error(`Erro interno: não foi possível encontrar o grupo para o símbolo "${simbolo}".`);
       }
-      
+       
+      const proximoEstado = this.afd.transicoes[estadoAtual]?.[grupoDoSimbolo];
+       
+      if (proximoEstado === undefined) {
+        throw new Error(`Transição não definida para o estado "${estadoAtual}" com o grupo de símbolos "${grupoDoSimbolo}".`);
+      }
+       
       estadoAtual = proximoEstado;
       caminho += ` --(${simbolo})-> ${estadoAtual}`;
     }
 
     const aceita = this.afd.estadosFinais.has(estadoAtual);
-
     console.log(`   Caminho: ${caminho}`);
+     
     if (aceita) {
       console.log(`   Resultado: ✅ ACEITA (Estado final "${estadoAtual}" é um estado de aceitação).`);
     } else {
@@ -179,3 +286,4 @@ class SimuladorAFD {
 
 const simulador = new SimuladorAFD();
 simulador.iniciar();
+

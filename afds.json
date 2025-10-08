@@ -1,0 +1,52 @@
+[
+  {
+    "descricao": "Aceita cadeias binárias com número ÍMPAR de zeros.",
+    "estados": ["par", "impar"],
+    "alfabeto": {
+      "isolados": ["0", "1"]
+    },
+    "estadoInicial": "par",
+    "estadosFinais": ["impar"],
+    "transicoes": {
+      "par": { "0": "impar", "1": "par" },
+      "impar": { "0": "par", "1": "impar" }
+    }
+  },
+  {
+    "descricao": "Reconhece números (inteiros e de ponto flutuante, com sinal opcional).",
+    "estados": ["q0q1", "q1", "q1q4", "q2", "q2q3q5", "q3q5", "q_erro"],
+    "alfabeto": {
+      "grupos": {
+        "digito": "0,1,2,3,4,5,6,7,8,9",
+        "sinais": "+,-"
+      },
+      "isolados": ["."]
+    },
+    "estadoInicial": "q0q1",
+    "estadosFinais": ["q2q3q5", "q3q5"],
+    "transicoes": {
+      "q0q1":   { "digito": "q1q4", "sinais": "q1", ".": "q2" },
+      "q1":     { "digito": "q1q4", "sinais": "q_erro", ".": "q2" },
+      "q1q4":   { "digito": "q1q4", "sinais": "q_erro", ".": "q2q3q5" },
+      "q2":     { "digito": "q3q5", "sinais": "q_erro", ".": "q_erro" },
+      "q3q5":   { "digito": "q3q5", "sinais": "q_erro", ".": "q_erro" },
+      "q2q3q5": { "digito": "q3q5", "sinais": "q_erro", ".": "q_erro" },
+      "q_erro": { "sinais": "q_erro", ".": "q_erro", "digito": "q_erro" }
+    }
+  },
+  {
+    "descricao": "Aceita cadeias que terminam com 'ab'.",
+    "estados": ["q0", "q1", "q2"],
+    "alfabeto": {
+      "isolados": ["a", "b"]
+    },
+    "estadoInicial": "q0",
+    "estadosFinais": ["q2"],
+    "transicoes": {
+      "q0": { "a": "q1", "b": "q0" },
+      "q1": { "a": "q1", "b": "q2" },
+      "q2": { "a": "q1", "b": "q0" }
+    }
+  }
+]
+
